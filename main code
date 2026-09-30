@@ -1,0 +1,100 @@
+========================================================================================================================================
+#If you need to: customize/upgrade/integrate or just dont wanna to set it by yourself, then just text me.
+#Telegram for work: @Myhamed91
+========================================================================================================================================
+#HOW TO RUN
+#set TELEGRAM_BOT_TOKEN=your_bot_token
+#set TELEGRAM_CHAT_ID=your_chat_id
+#Install requirements: pip install Flask requests
+#Start file: python yourfilename.py
+
+
+
+import os
+import logging
+from flask import Flask, request, jsonify
+import requests
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(name)
+
+app = Flask(name)
+
+# Configuration via environment variables (for security and flexibility)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID")
+
+def send_telegram_alert(lead_data):
+    """Send a formatted notification to Telegram"""
+    if TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN":
+        logger.warning("Telegram token not set. Skipping notification.")
+        return False
+    
+    text = (
+        "🚀 New Lead / Submission!\n\n"
+        f"👤 Name: {lead_data.get('name', 'Not provided')}\n"
+        f"📞 Contact: {lead_data.get('contact', 'Not provided')}\n"
+        f"💬 Message: {lead_data.get('message', 'Empty')}\n"
+        f"🌐 Source: {lead_data.get('source', 'Unknown')}"
+    )
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=5)
+        response.raise_for_status()
+        return True
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to send Telegram alert: {e}")
+        return False
+
+@app.route('/webhook/lead', methods=['POST'])
+def handle_lead():
+    """Endpoint for receiving incoming leads"""
+    data = request.json
+    
+    if not data:
+        return jsonify({"status": "error", "message": "No data provided"}), 400
+    
+    # Basic validation (checking for at least one contact channel)
+    if 'contact' not in data and 'email' not in data and 'phone' not in data:
+        return jsonify({"status": "error", "message": "Missing contact information"}), 422
+    
+    logger.info(f"Received valid lead: {data}")
+    
+    # Extension hook: integrate CRM, Notion, or Google Sheets here in the future
+    # save_to_crm(data)
+    
+    # Send the alert
+    success = send_telegram_alert(data)
+    
+    if success:
+        return jsonify({"status": "success", "message": "Lead processed and sent"}), 200
+    else:
+        return jsonify({"status": "partial_success", "message": "Processed but failed to notify Telegram"}), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({"status": "ok", "service": "lead-pipeline-core"}), 200
+
+if name == 'main':
+    # Run locally for development/testing
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+#HOW TO RUN
+#set TELEGRAM_BOT_TOKEN=your_bot_token
+#set TELEGRAM_CHAT_ID=your_chat_id
+#Install requirements: pip install Flask requests
+#Start file: python yourfilename.py
+========================================================================================================================================
+#If you need to: customize/upgrade/integrate or just dont wanna to set it by yourself, then just text me.
+#Telegram for work: @Myhamed91
+========================================================================================================================================
